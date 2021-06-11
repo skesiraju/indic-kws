@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 # author : Santosh
@@ -110,7 +110,7 @@ def main():
     t_set = test_wset - (tdt_set | tt_set | dt_set)
     print(f"X = test - (C {CUP} T {CUP} D)  :", len(t_set))
 
-    print("-- Loading info from alignment.cs --")
+    print("-- Loading info from alignment.csv --")
 
     # contains info from alignment.csv
     word_det = {}  # {word_1: [num_hits, num_miss, num_fa], ..}
@@ -141,14 +141,24 @@ def main():
                     except KeyError:
                         word_det[word] = val
 
-    print('word det:', len(word_det))
+    print('word det:', len(word_det), word_det.keys())
 
     det = []
     words = []
+    to_delete = []
     for word, val in word_det.items():
-        if test_w_count[word] == args.wfreq:
-            words.append(word)
-            det.append(val)
+        try:
+            if test_w_count[word] == args.wfreq or args.wfreq == 0:
+                words.append(word)
+                det.append(val)
+        except KeyError:
+            to_delete.append(word)
+
+    if to_delete:
+        for w in to_delete:
+            print("deleting", w)
+            del word_det[w]
+
 
     det = np.asarray(det)
     print('det:', det.shape, 'words with wfreq', args.wfreq, '. F =', len(words))
@@ -181,8 +191,9 @@ def main():
 
     rem_num = args.target_num - len(sub_set_t)
 
-    num_miss = (args.target_num * args.mr)
-    args.mr = float(num_miss  + a_miss) / float(rem_num)
+    if rem_num > 0:
+        num_miss = (args.target_num * args.mr)
+        args.mr = float(num_miss  + a_miss) / float(rem_num)
 
     print('remaining target num:', rem_num, 'adjusted miss ratio:', args.mr)
 
