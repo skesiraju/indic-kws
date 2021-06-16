@@ -1,19 +1,9 @@
 #!/usr/bin/env bash
 export LC_ALL=C
 
-words_file=
-train_text=
-dev_text=
-remove_dups=
 
 . ./utils/parse_options.sh
 
-echo "-------------------------------------"
-echo "Building an SRILM language model     "
-echo "-------------------------------------"
-
-datadir=$1
-tgtdir=$2
 outlm=lm.gz
 
 ##End of configuration
@@ -35,64 +25,37 @@ if [ -z $loc ]; then
   fi
 fi
 
-[ -z $words_file ] && words_file=$datadir/lang/words.txt
-[ -z $train_text ] && train_text=$datadir/train/text
-[ -z $dev_text ] && dev_text=$datadir/dev2h/text
 
-echo "Using words file: $words_file"
-echo "Using train text: $train_text"
-echo "Using dev text  : $dev_text"
+tgtdir=${1:-data/srilm}
+datadir=data
+olddir=data/srilm.old
 
-for f in $words_file $train_text $dev_text; do
-  [ ! -s $f ] && echo "No such file $f" && exit 1;
-done
-
-# Prepare the destination directory
-mkdir -p $tgtdir
-
-# Extract the word list from the training dictionary; exclude special symbols
-sort $words_file | awk '{print $1}' | grep -v '\#0' | grep -v '<eps>' > $tgtdir/vocab
-if (($?)); then
-  echo "Failed to create vocab from $words_file"
-  exit 1
+if [ -d ${olddir} ]; then
+    echo "${olddir} already exists."
 else
-  # wc vocab # doesn't work due to some encoding issues
-  echo vocab contains `cat $tgtdir/vocab | perl -ne 'BEGIN{$l=$w=0;}{split; $w+=$#_; $w++; $l++;}END{print "$l lines, $w words\n";}'`
+
+    mv ${tgtdir} ${olddir}
+    mkdir -p ${tgtdir}
+
+    cat ${olddir}/train.txt | sort -u > ${tgtdir}/train.txt
+    cat ${olddir}/dev.txt | sort -u > ${tgtdir}/dev.txt
+    cp ${olddir}/vocab ${tgtdir}/vocab
+
+    echo "Train lines: `wc -l ${olddir}/train.txt` -- after removing duplicates -- `wc -l ${tgtdir}/train.txt`"
+    echo "Dev   lines: `wc -l ${olddir}/dev.txt` -- after removing duplicates -- `wc -l ${tgtdir}/dev.txt`"
+
 fi
 
-# Kaldi transcript files contain Utterance_ID as the first word; remove it
-if [ "$remove_dups" == "true" ]; then
-    cat $train_text | cut -f2- -d' ' | sort -u > $tgtdir/train.txt
-    echo "Removing duplicates `wc -l ${train_text}` -- `wc -l ${tgtdir}/train.txt`"
-else
-    cat $train_text | cut -f2- -d' ' > $tgtdir/train.txt
-fi
-if (($?)); then
-    echo "Failed to create $tgtdir/train.txt from $train_text"
-    exit 1
-else
-    echo "Removed first word (uid) from every line of $train_text"
-    # wc text.train train.txt # doesn't work due to some encoding issues
-    echo $train_text contains `cat $train_text | perl -ne 'BEGIN{$w=$s=0;}{split; $w+=$#_; $w++; $s++;}END{print "$w words, $s sentences\n";}'`
-    echo train.txt contains `cat $tgtdir/train.txt | perl -ne 'BEGIN{$w=$s=0;}{split; $w+=$#_; $w++; $s++;}END{print "$w words, $s sentences\n";}'`
-fi
 
-# Kaldi transcript files contain Utterance_ID as the first word; remove it
-if [ "$remove_dups" == "true" ]; then
-    cat $dev_text | cut -f2- -d' ' | sort -u > $tgtdir/dev.txt
-    echo "Removing duplicates `wc -l ${dev_text}` -- `wc -l ${tgtdir}/dev.txt`"
-else
-    cat $dev_text | cut -f2- -d' ' > $tgtdir/dev.txt
-fi
-if (($?)); then
-    echo "Failed to create $tgtdir/dev.txt from $dev_text"
-    exit 1
-else
-    echo "Removed first word (uid) from every line of $dev_text"
-    # wc text.train train.txt # doesn't work due to some encoding issues
-    echo $train_text contains `cat $dev_text | perl -ne 'BEGIN{$w=$s=0;}{split; $w+=$#_; $w++; $s++;}END{print "$w words, $s sentences\n";}'`
-    echo $tgtdir/dev.txt contains `cat $tgtdir/dev.txt | perl -ne 'BEGIN{$w=$s=0;}{split; $w+=$#_; $w++; $s++;}END{print "$w words, $s sentences\n";}'`
-fi
+words_file=${datadir}/lang/words.txt
+
+echo "-------------------------------------"
+echo "Building an SRILM language model     "
+echo "-------------------------------------"
+
+wc -l ${tgtdir}/train.txt
+wc -l ${tgtdir}/dev.txt
+wc -l ${tgtdir}/vocab
 
 echo "-------------------"
 echo "Good-Turing 3grams"

@@ -125,12 +125,12 @@ def main():
                         )
                         problems.append(utt_id + "\t" + kw)
                 except KeyError:
-                    print("{:s} from utt_id missing in RTTM {:s}".format(kw, utt_id))
+                    print("utt_id {:s} and keyword {:s} missing in RTTM".format(utt_id, kw))
                     problems.append(utt_id + "\t" + kw)
         except KeyError:
             print("PROBLEM: {:20s} was not found in RTTM file.".format(kw))
 
-    print(len(problems), 'issues.')
+    # print(problems)
     with open(args.out_file, "w", encoding="utf-8") as fpw:
         fpw.write("\n".join(problems) + "\n")
 

@@ -10,6 +10,7 @@
 
 echo "=== Building a language model ..."
 
+#data=data/valid_train
 data=data/train
 locdata=data/local
 # Language model order
