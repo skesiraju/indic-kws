@@ -1,5 +1,16 @@
 #!/usr/bin/env bash
 
+clean_wiki_file=${1:-""}
+
+if [ -z ${clean_wiki_file} ]; then
+    echo "$0 <path to clean_data.txt> -- for additional LM training. Else LM \
+will be trained on standard data/train/text only"
+else
+    echo "File with for additional LM training: $clean_wiki_file"
+fi
+sleep 2
+
+
 tri5_only=true
 sgmm5_only=false
 data_only=false
@@ -16,8 +27,8 @@ set -o pipefail  #Exit if any of the commands in the pipeline will
 #set -u           #Fail on an undefined variable
 
 
-train_nj=10
-decode_nj=10
+train_nj=20
+decode_nj=20
 
 
 if [ ! -f data/train/.donexx ]; then
@@ -40,6 +51,8 @@ if [ ! -f data/train/.donexx ]; then
     touch data/train/.donexx
 fi
 
+lm_file=""
+
 # We will simply override the default G.fst by the G.fst generated using SRILM
 if [[ ! -f data/srilm/lm.gz || data/srilm/lm.gz -ot data/train/text ]]; then
 
@@ -51,14 +64,58 @@ if [[ ! -f data/srilm/lm.gz || data/srilm/lm.gz -ot data/train/text ]]; then
     utils/format_lm.sh data/lang_no data/local/lm.gz data/local/dict/lexicon.txt data/lang
 
     local/train_lms_srilm.sh --dev-text data/dev/text --train-text data/train/text data data/srilm
+
+    lm_file=data/srilm/lm.gz
+
 fi
 
-if [[ ! -f data/lang/G.fst || data/lang/G.fst -ot data/srilm/lm.gz ]]; then
-    echo ---------------------------------------------------------------------
-    echo "Creating G.fst on " `date`
-    echo ---------------------------------------------------------------------
-    local/arpa2G.sh data/srilm/lm.gz data/lang data/lang
+
+if [ ! -z ${clean_wiki_file} ]; then
+
+    if [ -f ${clean_wiki_file}  ]; then
+
+        orig_ppl_file=data/srilm/perplexities.txt
+        wiki_ppl_file=data/srilm_wiki/perplexities.txt
+
+        if [[ -f ${wiki_ppl_file} && data/srilm_wiki/lm.gz ]]; then
+            echo "${wiki_ppl_file} and data_srilm_wiki/lm.gz already exists."
+
+        else
+            mkdir -p data/srilm_wiki
+            cp data/srilm/dev.txt data/srilm/vocab data/srilm_wiki/
+            cat data/srilm/train.txt ${clean_wiki_file} > data/srilm_wiki/train.txt
+            local/train_lms_srilm_wiki.sh data/srilm_wiki/
+        fi
+
+        echo "-------------------"
+        echo "  PPL comparisions "
+        echo "-------------------"
+        echo "OLD LM   |  NEW LM "
+        echo "-------------------"
+        echo `head -1 ${orig_ppl_file} | awk -F" " '{print $((NF-2))}'`"  | " `head -1 ${wiki_ppl_file} | awk -F" " '{print $((NF-2))}'`
+        echo "-------------------"
+
+        echo ""
+        echo "If the PPL is better (lower is better) then everything is fine."
+        echo "Else QUIT training and investigate or use original text for LM."
+        echo "Hit ctrl+c to QUIT or wait for 15 seconds to continue training.."
+        sleep 15
+
+        lm_file=data/srilm_wiki/lm.gz
+
+    else
+        echo ${clean_wiki_file} not found.
+        exit;
+    fi
 fi
+
+if [[ ! -f data/lang/G.fst || data/lang/G.fst -ot ${lm_file} ]]; then
+    echo ---------------------------------------------------------------------
+    echo "Creating G.fst ${lm_file} on " `date`
+    echo ---------------------------------------------------------------------
+    local/arpa2G.sh ${lm_file} data/lang data/lang
+fi
+
 
 mfccdir=mfcc
 
@@ -85,19 +142,20 @@ for set_name in train dev test; do
 done
 
 
+
 if [ ! -f data/train_sub3/.done ]; then
     echo ---------------------------------------------------------------------
     echo "Subsetting monophone training data in data/train_sub[123] on" `date`
     echo ---------------------------------------------------------------------
     numutt=`cat data/train/feats.scp | wc -l`;
     utils/subset_data_dir.sh --shortest data/train 1000 data/train_sub1
-    if [ $numutt -gt 5000 ] ; then
-        utils/subset_data_dir.sh data/train 5000 data/train_sub2
+    if [ $numutt -gt 3000 ] ; then
+        utils/subset_data_dir.sh data/train 3000 data/train_sub2
     else
         (cd data; ln -s train train_sub2 )
     fi
-    if [ $numutt -gt 10000 ] ; then
-        utils/subset_data_dir.sh data/train 10000 data/train_sub3
+    if [ $numutt -gt 5000 ] ; then
+        utils/subset_data_dir.sh data/train 5000 data/train_sub3
     else
         (cd data; ln -s train train_sub3 )
     fi
@@ -110,22 +168,23 @@ if $data_only; then
     echo "--data-only is true" && exit 0
 fi
 
+# slightly higher numbers for multilingual training
 
 boost_sil=1.25
-numLeavesTri1=2000
-numGaussTri1=10000
+numLeavesTri1=2500
+numGaussTri1=12000
 
-numLeavesTri2=2000
-numGaussTri2=10000
+numLeavesTri2=2500
+numGaussTri2=12000
 
-numLeavesTri3=2000
-numGaussTri3=10000
+numLeavesTri3=3000
+numGaussTri3=15000
 
-numLeavesMLLT=2500
-numGaussMLLT=15000
+numLeavesMLLT=3500
+numGaussMLLT=18000
 
-numLeavesSAT=2500
-numGaussSAT=15000
+numLeavesSAT=3500
+numGaussSAT=18000
 
 if [ ! -f exp_mfcc/mono/.done ]; then
 
@@ -228,10 +287,7 @@ for set_name in dev test; do
                               exp_mfcc/tri5/decode_$set_name
         touch exp_mfcc/tri5/decode_${set_name}/.done
 
-        local/score_kaldi.sh --cmd run.pl \
-                             data/${set_name} \
-                             data/lang \
-                             exp_mfcc/tri5/decode_${set_name}/
+        local/score_kaldi.sh --cmd run.pl data/${set_name} data/lang exp_mfcc/tri5/decode_${set_name}/
     fi
 
 done

@@ -23,7 +23,7 @@ def load_keywords(kw_file, lex):
                 kwords.append(lex[parts[-1]])
                 orig_kwords.append(parts[-1])
             else:
-                kwords.append(lex[parts])
+                kwords.append(lex[parts[0]])
                 orig_kwords.append(parts[0])
 
     return kwords, orig_kwords
@@ -83,6 +83,14 @@ def main():
 
     args = parse_arguments()
 
+    if not os.path.exists(args.lex_file):
+        print(args.lex_file, 'not found. Use -lex_file option.')
+        sys.exit()
+
+    if not os.path.exists(args.text_file):
+        print(args.text_file, 'not found. Use -text_file option.')
+        sys.exit()
+
     os.makedirs(args.out_dir, exist_ok=True)
 
     out_dir = os.path.realpath(args.out_dir)
@@ -103,7 +111,11 @@ def main():
     with open(args.repr_file, "r", encoding="utf-8") as fpr:
         for line in fpr:
             parts = line.strip().split()
-            phone_rep[parts[0]] = parts[1]
+            if parts[1].strip():
+                phone_rep[parts[0]] = parts[1]
+            else:
+                print("No single char repr for", parts[0])
+                sys.exit()
 
     lex = load_lexicon(args.lex_file, phone_rep)
 
@@ -115,6 +127,7 @@ def main():
     _, text = load_text_and_convert(args.text_file, lex)
 
     for kno, kword in enumerate(kwords):
+
         all_dists = []
         for _, line in enumerate(text):
 
@@ -131,14 +144,19 @@ def main():
 def parse_arguments():
     """ parse command line args """
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+
     parser.add_argument("kw_file", help="path to keywords text file")
-    parser.add_argument("lex_file", help="path to lexicon text file")
     parser.add_argument("repr_file", help="path to phone_repr.txt file")
-    parser.add_argument("text_file", help="path to train/test text file")
     parser.add_argument("out_dir", help="output directory to save files")
-    parser.add_argument("-min_dist", type=int, default=2, help="min distance")
-    parser.add_argument("-max_dist", type=int, default=8, help="max distance")
+    parser.add_argument("-text_file", default="data/test/text", help="path to train/test text file")
+    parser.add_argument("-lex_file", default="data/local/dict/lexicon.txt",
+                        help="path to lexicon text file")
+    parser.add_argument("-min_dist", type=int, default=1, help="min distance")
+    parser.add_argument("-max_dist", type=int, default=10, help="max distance")
 
     # parser.add_argument("--line_nums", action="store_true",
     #                     help="save utterance line numbers instead of IDs")

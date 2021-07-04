@@ -7,18 +7,20 @@
 # Last modified : 08 Jun 2021
 
 """
-Get unique words in train/test and also their intersection
+Get unique words from the input transcription file
 """
 
 import os
 import sys
 import argparse
+import numpy as np
+from auto_utils import arrange_into_freq_bins, get_wfreq
 
 
 def get_word_count(fname):
 
     wcount = {}
-    with open(fname, 'r', encoding='utf-8') as fpr:
+    with open(fname, "r", encoding="utf-8") as fpr:
         for line in fpr:
             parts = line.strip().split()
             for word in parts[1:]:
@@ -34,48 +36,35 @@ def main():
 
     args = parse_arguments()
 
-    train_f = os.path.join(args.data_dir, "train/text")
-    test_f = os.path.join(args.data_dir, "test/text")
+    wcount = get_word_count(args.trans_file)
+    print("uniq words:", len(wcount))
 
-    train_wc = get_word_count(train_f)
-    test_wc = get_word_count(test_f)
+    with open(args.out_file, 'w', encoding='utf-8') as fpw:
+        i = 1
+        for w in wcount:
+            fpw.write(str(i) + " " + w + "\n")
+            i += 1
+    print(args.out_file, 'saved.')
 
-    train_vocab = set([w for w in train_wc])
-    test_vocab = set([w for w in test_wc])
+    counts = get_wfreq(wcount)
+    arrange_into_freq_bins(counts, 25)
 
-    print("train vocab :", len(train_vocab), len(train_wc))
-    print("test  vocab :", len(test_vocab), len(test_wc))
-
-    print("train & test:", len(train_vocab & test_vocab))
-    print("train - test:", len(train_vocab - test_vocab))
-    print("test - train:", len(test_vocab - train_vocab))
-
-    counts = []
-    for w in test_vocab - train_vocab:
-        counts.append(test_wc[w])
-
-    import matplotlib.pyplot as plt
-    import numpy as np
-    plt.figure(1)
-    plt.title(args.title + " test set")
-    plt.hist(counts, bins=np.arange(1, max(counts)+1, 1))
-    plt.grid(linestyle='--', alpha=0.5)
-    plt.xlabel('Occurrence bin')
-    plt.ylabel('Occurrence')
-    plt.show()
-
-    print(np.histogram(counts, bins=np.arange(1, max(counts)+1, 1)))
-
+    if args.wc:
+        np.savetxt(args.wc, counts, fmt="%d")
 
 
 def parse_arguments():
     """ parse command line arguments """
 
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("data_dir", help="path to data dir")
-    parser.add_argument("-title", default="")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument("trans_file", help="path to transcription file")
+    parser.add_argument("out_file", help="out file to save words")
+    parser.add_argument("-wc", help="save word counts to this file")
     args = parser.parse_args()
     return args
+
 
 if __name__ == "__main__":
     main()

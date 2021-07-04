@@ -67,6 +67,8 @@ if [ "$remove_dups" == "true" ]; then
 else
     cat $train_text | cut -f2- -d' ' > $tgtdir/train.txt
 fi
+
+
 if (($?)); then
     echo "Failed to create $tgtdir/train.txt from $train_text"
     exit 1

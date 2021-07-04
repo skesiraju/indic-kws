@@ -83,6 +83,10 @@ def save_subset(in_files, out_ids, out_file):
 
 def get_utt2uid_mapping(text_f, utt2uid):
 
+    if not os.path.exists(text_f):
+        print("get_utt2uid_mapping:", text_f, "FILE NOT FOUND.")
+        sys.exit()
+
     lno = 0
     with open(text_f, "r", encoding="utf-8") as fpr:
         for line in fpr:
@@ -232,6 +236,9 @@ def main():
         selected_uids[set_name] = sorted(set_uids)
         print(set_name, "dur: {:.2f}".format(set_dur/3600.))
 
+        if args.set_name == 'train':
+            break
+
     print('utts in dev + test:', len(selected_set))
 
     all_uids = set(list(uid2dur.keys()))
@@ -261,9 +268,10 @@ def main():
             for uid in selected_uids['dev']:
                 fpw.write(uid + "\n")
 
-        with open(os.path.join(args.out_dir, "test.ids"), "w", encoding="utf-8") as fpw:
-            for uid in selected_uids['test']:
-                fpw.write(uid + "\n")
+        if selected_uids['test']:
+            with open(os.path.join(args.out_dir, "test.ids"), "w", encoding="utf-8") as fpw:
+                for uid in selected_uids['test']:
+                    fpw.write(uid + "\n")
 
     uids = {"train": train_uids, "dev": selected_uids['dev'], "test": selected_uids['test']}
     for set_name in ["train", "dev", "test"]:
@@ -271,7 +279,8 @@ def main():
         for base in ["text", "utt2spk", "wav.scp"]:
             main_f = [args.data_dir + f"train/{base}", args.data_dir + f"test/{base}"]
             out_f = args.out_dir + f"/{set_name}/{base}"
-            save_subset(main_f, uids[set_name], out_f)
+            if uids[set_name]:
+                save_subset(main_f, uids[set_name], out_f)
 
 
 def parse_arguments():
