@@ -1,5 +1,4 @@
-# indic-kws
-Resources and benchmarks for keyword search from spoken audio in low-resource Indian languages (under review).
+### Resources and benchmarks for keyword search in spoken audio from low-resource Indian languages (under review).
 
 * `wiki_scripts/` - contains scripts for downloading and cleaning wikipedia data - for LM training
 * `resources/` - contains data splits (utt IDs, utt2spk), keywords, rttm (groundtruth for KWS) for all 6 languages
