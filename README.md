@@ -11,5 +11,5 @@ Resources and benchmarks for keyword search from spoken audio in low-resource In
 * Vijaya Lakshmi V Nadimpalli
 * Santosh Kesiraju
 * Rohit Banka
-* Ramhmi Kethireddy
+* Rashmi Kethireddy
 * Suryakanth V Gangashetyy
