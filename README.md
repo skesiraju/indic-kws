@@ -8,7 +8,7 @@ Resources and benchmarks for keyword search from spoken audio in low-resource In
 
 
 #### Authors
-* Vijay Lakshmi V Nadimpalli
+* Vijaya Lakshmi V Nadimpalli
 * Santosh Kesiraju
 * Rohit Banka
 * Ramhmi Kethireddy
