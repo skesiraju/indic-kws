@@ -11,4 +11,4 @@
 * Santosh Kesiraju
 * Rohit Banka
 * Rashmi Kethireddy
-* Suryakanth V Gangashetyy
+* Suryakanth V Gangashetty
